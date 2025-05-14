@@ -9,86 +9,105 @@ open Newtonsoft.Json.FSharp
 open Newtonsoft.Json.Converters
 
 module Routes =
-    // JSON szerializációs beállítások
+    // JSON beállítások
     let jsonSettings = JsonSerializerSettings() |> Serialisation.extend
-    jsonSettings.Converters.Add(StringEnumConverter()) 
+    jsonSettings.Converters.Add(StringEnumConverter())
     jsonSettings.NullValueHandling <- NullValueHandling.Ignore
 
+    // Hibakezelő
     let errorHandler (message: string) : HttpHandler =
         fun next ctx ->
             task {
-                ctx.SetStatusCode 400
-                ctx.SetContentType "application/json"
-                let response = JsonConvert.SerializeObject({| Error = message |}, jsonSettings)
-                do! ctx.Response.WriteAsync(response)
+                do ctx.SetStatusCode 400
+                do ctx.SetContentType "application/json"
+                let payload = {| Error = message |}
+                let json    = JsonConvert.SerializeObject(payload, jsonSettings)
+                do! ctx.Response.WriteAsync(json)
                 return! next ctx
             }
 
+    // GET /api/rules
     let getRulesHandler : HttpHandler =
         fun next ctx ->
             task {
                 try
                     let rules = Database.getRules()
-                    ctx.SetContentType "application/json"
-                    let response = JsonConvert.SerializeObject(rules, jsonSettings)
-                    do! ctx.Response.WriteAsync(response)
+                    do ctx.SetContentType "application/json"
+                    let json = JsonConvert.SerializeObject(rules, jsonSettings)
+                    do! ctx.Response.WriteAsync(json)
                     return! next ctx
-                with
-                | ex -> return! errorHandler $"Failed to fetch rules: {ex.Message}" next ctx
+                with ex ->
+                    return! errorHandler $"Failed to fetch rules: {ex.Message}" next ctx
             }
 
+    // POST /api/rules
     let createRuleHandler : HttpHandler =
         fun next ctx ->
             task {
                 try
-                    // JSON testreszöveg olvasása
-                    let! json = ctx.ReadBodyFromRequestAsync()
-                    printfn "Received JSON: %s" json
-                    // Deszerializáció Newtonsoft.Json-nal
-                    let rule = JsonConvert.DeserializeObject<Rule>(json, jsonSettings)
-                    printfn "Deserialized Rule:"
-                    printfn "  Id: %A" rule.Id
-                    printfn "  Conditions: %A" rule.Conditions
-                    match rule.Conditions with
-                    | Some conditions when not (List.isEmpty conditions) ->
-                        conditions |> List.iteri (fun i cond ->
-                            printfn "  Condition %d: Field=%A, Operator=%A, Value=%A" 
-                                i cond.Field cond.Operator cond.Value)
-                    | _ -> ()
-                    printfn "  LogicalOperator: %A" rule.LogicalOperator
-                    printfn "  Action: %A" rule.Action
-                    // Validáció
-                    match rule with
-                    | { Conditions = None } -> 
-                        return! errorHandler "Conditions cannot be null" next ctx
-                    | { Conditions = Some conditions } when List.isEmpty conditions -> 
-                        return! errorHandler "Conditions cannot be empty" next ctx
-                    | { Action = None } -> 
-                        return! errorHandler "Action cannot be null" next ctx
-                    | { LogicalOperator = None } -> 
-                        return! errorHandler "LogicalOperator cannot be null" next ctx
-                    | _ ->
-                        let newId = Database.insertRule rule
-                        ctx.SetStatusCode 201
-                        ctx.SetContentType "application/json"
-                        let response = JsonConvert.SerializeObject({| Id = newId |}, jsonSettings)
-                        do! ctx.Response.WriteAsync(response)
-                        return! next ctx
+                    let! body = ctx.ReadBodyFromRequestAsync()
+                    let rule  = JsonConvert.DeserializeObject<Rule>(body, jsonSettings)
+
+                    let newId = Database.insertRule rule
+
+                    do ctx.SetStatusCode 201
+                    do ctx.SetContentType "application/json"
+                    let json = JsonConvert.SerializeObject({| Id = newId |}, jsonSettings)
+                    do! ctx.Response.WriteAsync(json)
+
+                    // 4) Pipeline folytatása
+                    return! next ctx
                 with
-                | :? JsonException as jsonEx ->
-                    printfn "JSON deserialization error: %s" jsonEx.Message
-                    return! errorHandler $"Invalid JSON format: {jsonEx.Message}" next ctx
-                | ex -> 
-                    printfn "Unexpected error: %s" ex.Message
+                | :? JsonException as jex ->
+                    return! errorHandler $"Invalid JSON: {jex.Message}" next ctx
+                | ex ->
                     return! errorHandler $"Failed to create rule: {ex.Message}" next ctx
             }
 
+    // PUT /api/rules/{id}
+    let updateRuleHandler (id: int) : HttpHandler =
+        fun next ctx ->
+            task {
+                try
+                    let! body = ctx.ReadBodyFromRequestAsync()
+                    let incoming =
+                        JsonConvert.DeserializeObject<Rule>(
+                            body,
+                            jsonSettings
+                        )
+                    let affected = Database.updateRule id incoming
+                    if affected = 1 then
+                        return! setStatusCode 204 next ctx
+                    else
+                        return! (RequestErrors.NOT_FOUND "Rule not found") next ctx
+                with ex ->
+                    // részletesebb hibajelzés
+                    return! errorHandler $"Failed to update rule: {ex.Message}" next ctx
+                }
+
+    // DELETE /api/rules/{id}
+    let deleteRuleHandler (id: int) : HttpHandler =
+        fun next ctx ->
+            task {
+                try
+                    Database.deleteRule id
+                    return! setStatusCode 204 next ctx
+                with ex ->
+                    return! errorHandler $"Failed to delete rule: {ex.Message}" next ctx
+            }
+
+    // Routing
     let webApp : HttpHandler =
         choose [
             route "/" >=> text "Gatekeeper API"
+
             route "/api/rules" >=> choose [
-                GET >=> getRulesHandler
+                GET  >=> getRulesHandler
                 POST >=> createRuleHandler
             ]
+
+            PUT    >=> routef "/api/rules/%i" updateRuleHandler
+            DELETE >=> routef "/api/rules/%i" deleteRuleHandler
+
             setStatusCode 404 >=> text "Not Found"
         ]

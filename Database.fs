@@ -3,6 +3,7 @@ namespace Gatekeeper
 open System
 open System.Data
 open Microsoft.Data.Sqlite
+
 open Dapper
 open Gatekeeper.Models
 open Newtonsoft.Json
@@ -68,7 +69,8 @@ module Database =
             printfn "Failed to insert rule: %s" ex.Message
             reraise()
 
-    let updateRule (id: int) (rule: Rule) : bool =
+    // Visszatér az érintett sorok számával
+    let updateRule (id:int) (rule:Rule) =
         try
             let conditions = rule.Conditions |> Option.defaultValue []
             let logicalOperator =
@@ -78,16 +80,22 @@ module Database =
             let action = rule.Action |> Option.defaultValue "Deny"
             let conditionsJson = JsonConvert.SerializeObject(conditions)
             use conn = createConnection()
-            let parameters = {| Id = int64 id; ConditionsJson = conditionsJson; LogicalOperator = logicalOperator; Action = action |}
-            let rowsAffected =
-                conn.Execute(
-                    "UPDATE Rules SET ConditionsJson = @ConditionsJson, LogicalOperator = @LogicalOperator, Action = @Action WHERE Id = @Id",
+            let parameters = {|
+                ConditionsJson = conditionsJson
+                LogicalOperator = logicalOperator
+                Action = action
+                Id = id
+            |}
+
+            let value = conn.ExecuteScalar<int64>(
+                    "UPDATE Rules SET ConditionsJson = @ConditionsJson, LogicalOperator = @LogicalOperator, Action = @Action WHERE Id = @Id;",
                     parameters
                 )
-            printfn "Update rule with ID: %d, rows affected: %d" id rowsAffected
-            rowsAffected > 0
+
+            printfn "Updated rule with ID: %d" id
+            int id
         with ex ->
-            printfn "Failed to update rule: %s" ex.Message
+            printfn "Failed to insert rule: %s" ex.Message
             reraise()
 
     let deleteRule (id: int) : bool =

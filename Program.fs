@@ -8,10 +8,7 @@ open Newtonsoft.Json
 open Newtonsoft.Json.Converters
 open System
 
-[<EntryPoint>]
-let main args =
-    let builder = WebApplication.CreateBuilder(args)
-    
+let configureJson () =
     // JSON szerializációs beállítások (opcionálisan itt definiálható, de Routes.fs-ben használjuk)
     let jsonSettings = JsonSerializerSettings()
     jsonSettings.Converters.Add(StringEnumConverter())
@@ -19,6 +16,12 @@ let main args =
     jsonSettings.NullValueHandling <- NullValueHandling.Ignore
 
     JsonConvert.DefaultSettings <- Func<JsonSerializerSettings>( fun () -> jsonSettings)
+
+[<EntryPoint>]
+let main args =
+    let builder = WebApplication.CreateBuilder(args)
+    
+    configureJson()
 
     // Giraffe konfigurálása szerializáció nélkül
     builder.Services
