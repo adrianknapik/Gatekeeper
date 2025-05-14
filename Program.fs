@@ -6,6 +6,7 @@ open Gatekeeper
 open Gatekeeper.Models
 open Newtonsoft.Json
 open Newtonsoft.Json.Converters
+open System
 
 [<EntryPoint>]
 let main args =
@@ -17,6 +18,8 @@ let main args =
     jsonSettings.Converters.Add(RuleConverter())
     jsonSettings.NullValueHandling <- NullValueHandling.Ignore
 
+    JsonConvert.DefaultSettings <- Func<JsonSerializerSettings>( fun () -> jsonSettings)
+
     // Giraffe konfigurálása szerializáció nélkül
     builder.Services
         .AddGiraffe()
@@ -24,6 +27,6 @@ let main args =
 
     let app = builder.Build()
     app.UseGiraffe(Routes.webApp)
-    Database.initDatabase()
+    initDatabase()
     app.Run()
     0
