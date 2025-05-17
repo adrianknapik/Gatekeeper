@@ -1,0 +1,17 @@
+body {
+  background-color: #212529;
+}
+.main-container {
+  margin: 4rem 3rem;
+}
+.user-item {
+  border: 1px solid #495057;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 5px;
+  background-color: #343a40;
+}
+.endpoint-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
