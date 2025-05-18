@@ -10,8 +10,12 @@ open Gatekeeper.Database
 open Gatekeeper.PolicyEngine
 open Gatekeeper
 
-// DTO a bejövő JSON-hoz (opcionális, ha a kérés body-t tartalmaz)
+// DTO a bejövő JSON-hoz
 type EvaluateDto = {
+    [<JsonProperty("path")>]
+    Path: string option
+    [<JsonProperty("method")>]
+    Method: string option
     [<JsonProperty("context")>]
     Context: Map<string, string> option
 }
@@ -22,9 +26,8 @@ let private mapUnion (map1: Map<'k, 'v>) (map2: Map<'k, 'v>) : Map<'k, 'v> =
 
 // JWT kinyerése az Authorization header-ből
 let private extractJwt (ctx: HttpContext) : string option =
-    ctx.Request.Headers.["Authorization"]
-    |> Seq.tryHead
-    |> Option.map (fun auth -> auth.Replace("Bearer ", ""))
+    ctx.Request.Headers.TryGetValue("Authorization")
+    |> fun (exists, value) -> if exists then Some (value.ToString().Replace("Bearer ", "")) else None
 
 // JWT claim-ek kinyerése
 let private extractJwtClaims (jwt: string) : Map<string, string> =
@@ -39,24 +42,29 @@ let private extractJwtClaims (jwt: string) : Map<string, string> =
         printfn "Error parsing JWT: %s" ex.Message
         Map.empty
 
+// Case-insensitive header kinyerés
+let private getHeaderIgnoreCase (ctx: HttpContext) (headerName: string) : string =
+    ctx.Request.Headers
+    |> Seq.tryFind (fun kv -> kv.Key.Equals(headerName, StringComparison.OrdinalIgnoreCase))
+    |> Option.map (fun kv -> kv.Value.ToString())
+    |> Option.defaultValue ""
+
 // /api/evaluate endpoint kezelője
 let evaluateHandler : HttpHandler =
     fun next ctx ->
         task {
             printfn "POST /api/gk/evaluate"
+            printfn "Request Headers: %A" ctx.Request.Headers
             try
-                // Ellenőrizd, hogy van-e body
-                let dto = 
+                // Body deszerializálása
+                let dtoTask =
                     if ctx.Request.HasJsonContentType() && ctx.Request.ContentLength.HasValue && ctx.Request.ContentLength.Value > 0L then
-                        task {
-                            let! parsedDto = ctx.BindJsonAsync<EvaluateDto>()
-                            return parsedDto
-                        }
+                        ctx.BindJsonAsync<EvaluateDto>()
                     else
-                        task { return { Context = None } } // Alapértelmezett üres DTO
-
-                let! dto = dto
-                printfn "Deserialized DTO: Context=%A" dto.Context
+                        task { return { Path = None; Method = None; Context = None } }
+                
+                let! dto = dtoTask
+                printfn "Deserialized DTO: Path=%A, Method=%A, Context=%A" dto.Path dto.Method dto.Context
 
                 // Kontextus összeállítása
                 let jwt = extractJwt ctx
@@ -69,8 +77,6 @@ let evaluateHandler : HttpHandler =
                     ctx.Request.Headers
                     |> Seq.map (fun kv -> (kv.Key, kv.Value.ToString()))
                     |> Map.ofSeq
-
-                // Opcionális body context hozzáadása
                 let additionalContext = dto.Context |> Option.defaultValue Map.empty
 
                 let context = {
@@ -81,39 +87,51 @@ let evaluateHandler : HttpHandler =
                     Ip = ctx.Connection.RemoteIpAddress.ToString()
                     Timestamp = DateTime.UtcNow
                 }
+                printfn "Context QueryParams: %A" context.QueryParams
 
-                // X-Forwarded-Uri header kinyerése
-                let forwardedUri =
-                    ctx.Request.Headers.["X-Forwarded-Uri"]
-                    |> Seq.tryHead
-                    |> Option.defaultValue ""
+                // X-Forwarded-Uri és X-Forwarded-Method kinyerése
+                let forwardedUri = getHeaderIgnoreCase ctx "X-Forwarded-Uri"
+                let httpMethod = getHeaderIgnoreCase ctx "X-Forwarded-Method" |> fun m -> if String.IsNullOrEmpty m then "GET" else m.ToUpper()
+                
+                // DTO-ból származó értékek prioritása
+                let finalUri = 
+                    match dto.Path, forwardedUri with
+                    | Some path, _ -> path
+                    | None, uri when not (String.IsNullOrEmpty uri) -> uri
+                    | _ -> "/unknown" // Alapértelmezett URI, ha minden hiányzik
+                let finalMethod = dto.Method |> Option.map (fun m -> m.ToUpper()) |> Option.defaultValue httpMethod
 
-                // Eredeti HTTP metódus kinyerése
-                let httpMethod =
-                    ctx.Request.Headers.["X-Forwarded-Method"]
-                    |> Seq.tryHead
-                    |> Option.defaultValue "POST"
-                    |> fun method -> method.ToUpper()
-                printfn "Original HTTP method from X-Forwarded-Method: %s" httpMethod
+                printfn "Evaluating URI: %s, Method: %s" finalUri finalMethod
 
                 // Szabályok betöltése és szűrése
-                let rules =
-                    Database.getRules ()
+                let rules = Database.getRules ()
+                printfn "All rules: %A" rules
+
+                let filteredRules =
+                    rules
                     |> List.filter (fun rule ->
                         let endpointMatch =
                             rule.Endpoint
-                            |> Option.map (fun endpoint -> forwardedUri.Contains endpoint)
+                            |> Option.map (fun endpoint ->
+                                let cleanUri = finalUri.Split('?').[0] // Query paraméterek eltávolítása
+                                printfn "Checking endpoint: Rule=%s, URI=%s" endpoint cleanUri
+                                cleanUri.ToLower().Contains(endpoint.ToLower())
+                            )
                             |> Option.defaultValue true
                         let httpTypeMatch =
                             rule.HttpType
-                            |> Option.map (fun httpType -> httpType.ToString().ToUpper() = httpMethod)
+                            |> Option.map (fun httpType ->
+                                let ruleMethod = httpType.ToString().ToUpper()
+                                printfn "Checking method: Rule=%s, Method=%s" ruleMethod finalMethod
+                                ruleMethod = finalMethod
+                            )
                             |> Option.defaultValue true
                         endpointMatch && httpTypeMatch
                     )
-                printfn "Fetched %d rules for URI: %s, Method: %s" rules.Length forwardedUri httpMethod
+                printfn "Fetched %d rules for URI: %s, Method: %s" filteredRules.Length finalUri finalMethod
 
                 // Szabályok kiértékelése
-                let result = PolicyEngine.evaluateRules rules context
+                let result = PolicyEngine.evaluateRules filteredRules context
                 printfn "Evaluation result: Allowed=%b" result
 
                 // Válasz

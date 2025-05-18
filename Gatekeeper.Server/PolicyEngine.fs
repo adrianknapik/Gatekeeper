@@ -25,18 +25,20 @@ module PolicyEngine =
 
         match rule.ContextSource, rule.Field, rule.Operator, rule.Value with
         | Some source, Some field, Some operator, Some value ->
-            match getFieldValue source field with
-            | Some fieldValue ->
-                printfn "Evaluating rule: Source=%A, Field=%s, Operator=%A, Value=%s, ActualValue=%s" source field operator value fieldValue
+            let fieldValue = getFieldValue source field
+            printfn "Evaluating rule: ID=%A, Source=%A, Field=%s, Operator=%A, Value=%s, ActualValue=%A"
+                rule.Id source field operator value fieldValue
+            match fieldValue with
+            | Some actualValue ->
                 match operator with
-                | Operator.Equal -> fieldValue = value
-                | Operator.NotEqual -> fieldValue <> value
+                | Operator.Equal -> actualValue = value
+                | Operator.NotEqual -> actualValue <> value
                 | Operator.GreaterThan ->
-                    let fieldNum = Double.TryParse fieldValue
+                    let fieldNum = Double.TryParse actualValue
                     let valueNum = Double.TryParse value
                     fst fieldNum && fst valueNum && snd fieldNum > snd valueNum
                 | Operator.LessThan ->
-                    let fieldNum = Double.TryParse fieldValue
+                    let fieldNum = Double.TryParse actualValue
                     let valueNum = Double.TryParse value
                     fst fieldNum && fst valueNum && snd fieldNum < snd valueNum
                 | _ -> false // Ismeretlen Operator esetén false
@@ -44,7 +46,7 @@ module PolicyEngine =
                 printfn "Field %s not found in context for source %A" field source
                 false
         | _ ->
-            printfn "Invalid rule: Missing required fields"
+            printfn "Invalid rule: Missing required fields (ID=%A)" rule.Id
             false
 
     // Összes szabály kiértékelése (AND kapcsolat)

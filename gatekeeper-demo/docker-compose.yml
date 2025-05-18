@@ -23,7 +23,7 @@ services:
       - "traefik.http.routers.traefik.entrypoints=web"
 
   gatekeeper-be:
-    image: knapkomadmin/knapkom-gatekeeper-be:demo1.5
+    image: knapkomadmin/knapkom-gatekeeper-be:demo
     container_name: gatekeeper-be
     environment:
       - ADMIN_PASSWORD=0000admin
@@ -41,7 +41,7 @@ services:
       - default
 
   gatekeeper-fe:
-    image: knapkomadmin/knapkom-gatekeeper-fe:demo8
+    image: knapkomadmin/knapkom-gatekeeper-fe:demo
     container_name: gatekeeper-fe
     restart: always
     expose:

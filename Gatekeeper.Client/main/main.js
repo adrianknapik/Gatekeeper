@@ -53,10 +53,13 @@ function addRuleItem(
                 }>JWT</option>
                 <option value="Query" ${
                   rule.ContextSource === "Query" ? "selected" : ""
-                }>QUERY</option>
+                } disabled>QUERY</option>
                 <option value="Params" ${
                   rule.ContextSource === "Params" ? "selected" : ""
-                }>PARAMS</option>
+                } disabled>Params</option>
+                <option value="Body" ${
+                  rule.ContextSource === "Body" ? "selected" : ""
+                } disabled>Body</option>
             </select>
         </div>
         <div class="col-12 col-sm-3">

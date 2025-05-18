@@ -1,6 +1,7 @@
 document.getElementById("httpForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  const jwtToken = document.getElementById("jwtToken").value;
   const userUrl = document.getElementById("httpUrl").value;
   const method = document.getElementById("httpMethod").value;
   const bodyText = document.getElementById("httpBody").value;
@@ -19,19 +20,25 @@ document.getElementById("httpForm").addEventListener("submit", async (e) => {
     pathWithQuery = pathOnly + (query ? `?${query}` : "");
   }
 
-  const evaluateEndpoint = `/api/gk/evaluate${pathWithQuery}`;
+  const evaluateEndpoint = "/api/gk/evaluate";
 
   try {
+    const evalHeaders = {
+      "Content-Type": "application/json",
+      "X-Forwarded-Uri": pathWithQuery,
+      "X-Forwarded-Method": method,
+    };
+    if (jwtToken.trim()) {
+      evalHeaders["Authorization"] = `Bearer ${jwtToken}`;
+    }
+
     const evalResponse = await fetch(evaluateEndpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Forwarded-Uri": pathWithQuery,
-        "X-Forwarded-Method": method,
-      },
+      headers: evalHeaders,
+      body: JSON.stringify({ path: pathWithQuery, method }),
     });
 
-    if (evalResponse.status === 403 || evalResponse.status === 500) {
+    if (!evalResponse.ok) {
       let evalResult;
       try {
         evalResult = await evalResponse.json();
@@ -63,13 +70,12 @@ document.getElementById("httpForm").addEventListener("submit", async (e) => {
     }
 
     responseText.value = JSON.stringify(origResult, null, 2);
-    if (origResponse.ok) {
-      alertBox.className = "alert alert-success";
-      alertBox.textContent = `Success: ${origResponse.status}`;
-    } else {
-      alertBox.className = "alert alert-warning";
-      alertBox.textContent = `Error: ${origResponse.status}`;
-    }
+    alertBox.className = origResponse.ok
+      ? "alert alert-success"
+      : "alert alert-warning";
+    alertBox.textContent = origResponse.ok
+      ? `Success: ${origResponse.status}`
+      : `Error: ${origResponse.status}`;
     alertBox.classList.remove("d-none");
   } catch (error) {
     alertBox.className = "alert alert-danger";
@@ -77,3 +83,16 @@ document.getElementById("httpForm").addEventListener("submit", async (e) => {
     alertBox.classList.remove("d-none");
   }
 });
+
+async function main() {
+  if (localStorage.getItem("username") === null) {
+    window.location.href = "../login/login.html";
+  }
+}
+
+function logout() {
+  localStorage.removeItem("username");
+  window.location.href = "../login/login.html";
+}
+
+document.addEventListener("DOMContentLoaded", main());
