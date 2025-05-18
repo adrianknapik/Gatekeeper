@@ -58,14 +58,11 @@ function addUserItem(user = { id: null, username: "", password: "" }) {
       };
 
       try {
-        const response = await fetch(
-          "http://localhost:5113/api/account/register",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          }
-        );
+        const response = await fetch(`/api/gk/account/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
 
         if (response.ok) {
           saveBtn.remove(); // Remove save button after saving
@@ -94,7 +91,7 @@ function addUserItem(user = { id: null, username: "", password: "" }) {
       let username = itemDiv.querySelector(".username-input").value;
       let password = itemDiv.querySelector(".password-input").value;
 
-      const response = await fetch(`http://localhost:5113/api/account/delete`, {
+      const response = await fetch(`/api/gk/account/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -115,7 +112,7 @@ function addUserItem(user = { id: null, username: "", password: "" }) {
 // Load existing users
 async function loadUsers() {
   try {
-    const response = await fetch("http://localhost:5113/api/account/usernames");
+    const response = await fetch(`/api/gk/account/usernames`);
     const usernames = await response.json();
 
     usernames.usernames.forEach(

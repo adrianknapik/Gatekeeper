@@ -110,16 +110,13 @@ function addRuleItem(
     try {
       let response;
       if (rule.Id) {
-        response = await fetch(
-          `http://localhost:5113/api/rules/${itemDiv.dataset.Id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          }
-        );
+        response = await fetch(`/api/gk/rules/${itemDiv.dataset.Id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
       } else {
-        response = await fetch("http://localhost:5113/api/rules", {
+        response = await fetch(`/api/gk/rules`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
@@ -145,12 +142,9 @@ function addRuleItem(
     if (!confirm("Are you sure you want to delete this rule?")) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:5113/api/rules/${itemDiv.dataset.Id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/gk/rules/${itemDiv.dataset.Id}`, {
+        method: "DELETE",
+      });
 
       if (response.ok) {
         itemDiv.remove();
@@ -168,7 +162,7 @@ function addRuleItem(
 // Load existing rules
 async function loadRules() {
   try {
-    const response = await fetch("http://localhost:5113/api/rules");
+    const response = await fetch(`/api/gk/rules`);
     const rules = await response.json();
     console.log("Loaded rules:", rules);
     rules.forEach((rule) => addRuleItem(rule));
