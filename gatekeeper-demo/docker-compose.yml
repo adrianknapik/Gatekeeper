@@ -1,0 +1,97 @@
+version: "3.5"
+
+services:
+  traefik:
+    image: traefik:v2.5.4
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TRAEFIK_API_INSECURE=true
+      - TRAEFIK_PROVIDERS_DOCKER=true
+      - TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT=false
+      - TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:80
+      - TRAEFIK_LOG_LEVEL=DEBUG
+    networks:
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
+
+  gatekeeper-be:
+    image: knapkomadmin/knapkom-gatekeeper-be:demo1.5
+    container_name: gatekeeper-be
+    environment:
+      - ADMIN_PASSWORD=0000admin
+      - ADMIN_EMAIL=admin@gatekeeper.org
+    restart: always
+    expose:
+      - "5113"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gatekeeper-be.rule=PathPrefix(`/api/gk`)"
+      - "traefik.http.services.gatekeeper-be.loadbalancer.server.port=5113"
+      - "traefik.http.routers.gatekeeper-be.entrypoints=web"
+      - "traefik.http.routers.gatekeeper-be.service=gatekeeper-be"
+    networks:
+      - default
+
+  gatekeeper-fe:
+    image: knapkomadmin/knapkom-gatekeeper-fe:demo8
+    container_name: gatekeeper-fe
+    restart: always
+    expose:
+      - "6223"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gatekeeper-fe.rule=PathPrefix(`/gatekeeper`)"
+      - "traefik.http.routers.gatekeeper-fe.entrypoints=web"
+      - "traefik.http.routers.gatekeeper-fe.service=gatekeeper-fe"
+      - "traefik.http.services.gatekeeper-fe.loadbalancer.server.port=6223"
+      - "traefik.http.middlewares.stripprefix.stripprefix.prefixes=/gatekeeper"
+      - "traefik.http.routers.gatekeeper-fe.middlewares=stripprefix"
+    networks:
+      - default
+
+  publisher-api:
+    build:
+      context: ./go-publisher-demo
+      dockerfile: Dockerfile
+    container_name: publisher-api
+    restart: always
+    expose:
+      - "8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.publisher-api.rule=PathPrefix(`/api/publisher_demo`)"
+      - "traefik.http.services.publisher-api.loadbalancer.server.port=8080"
+      - "traefik.http.routers.publisher-api.entrypoints=web"
+      - "traefik.http.routers.publisher-api.service=publisher-api"
+    networks:
+      - default
+
+  todo-api:
+    build:
+      context: ./TodoDemo
+      dockerfile: Dockerfile
+    container_name: todo-api
+    restart: always
+    expose:
+      - "5000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.todo-api.rule=PathPrefix(`/api/todo_demo`)"
+      - "traefik.http.services.todo-api.loadbalancer.server.port=5000"
+      - "traefik.http.routers.todo-api.entrypoints=web"
+      - "traefik.http.routers.todo-api.service=todo-api"
+    networks:
+      - default
+
+networks:
+  default:
+    name: docker_internal
+    external: true

@@ -53,9 +53,7 @@ let main args =
     // CORS middleware engedélyezése
     app.UseCors("AllowAllOrigins") |> ignore
 
-    // Route-ok hozzáadása
-    
-    // Combine all routes into one handler
+    // Az összes route-ot egy listába tesszük
     let allRoutes =
         choose [
             Routes.Evaluate.evaluateRoutes
@@ -63,7 +61,7 @@ let main args =
             Routes.webApp
         ]
 
-    // Register the combined routes
+    // Hozzáadjuk az összes route-ot a Giraffe-hoz
     app.UseGiraffe allRoutes
 
     initDatabase()

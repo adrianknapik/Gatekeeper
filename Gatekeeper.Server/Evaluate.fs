@@ -43,7 +43,7 @@ let private extractJwtClaims (jwt: string) : Map<string, string> =
 let evaluateHandler : HttpHandler =
     fun next ctx ->
         task {
-            printfn "POST /api/gk/evaluate kérés fogadása"
+            printfn "POST /api/gk/evaluate"
             try
                 // Ellenőrizd, hogy van-e body
                 let dto = 
