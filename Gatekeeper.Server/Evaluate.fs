@@ -43,10 +43,19 @@ let private extractJwtClaims (jwt: string) : Map<string, string> =
 let evaluateHandler : HttpHandler =
     fun next ctx ->
         task {
-            printfn "POST /api/evaluate kérés fogadása"
+            printfn "POST /api/gk/evaluate kérés fogadása"
             try
-                // DTO kötése a body-ból
-                let! dto = ctx.BindJsonAsync<EvaluateDto>()
+                // Ellenőrizd, hogy van-e body
+                let dto = 
+                    if ctx.Request.HasJsonContentType() && ctx.Request.ContentLength.HasValue && ctx.Request.ContentLength.Value > 0L then
+                        task {
+                            let! parsedDto = ctx.BindJsonAsync<EvaluateDto>()
+                            return parsedDto
+                        }
+                    else
+                        task { return { Context = None } } // Alapértelmezett üres DTO
+
+                let! dto = dto
                 printfn "Deserialized DTO: Context=%A" dto.Context
 
                 // Kontextus összeállítása
@@ -68,7 +77,7 @@ let evaluateHandler : HttpHandler =
                     Claims = claims
                     Headers = headers
                     QueryParams = mapUnion queryParams additionalContext
-                    RouteParams = Map.empty // Nincs dinamikus route
+                    RouteParams = Map.empty
                     Ip = ctx.Connection.RemoteIpAddress.ToString()
                     Timestamp = DateTime.UtcNow
                 }
@@ -79,35 +88,35 @@ let evaluateHandler : HttpHandler =
                     |> Seq.tryHead
                     |> Option.defaultValue ""
 
-                // Eredeti HTTP metódus kinyerése az X-Forwarded-Method header-ből
+                // Eredeti HTTP metódus kinyerése
                 let httpMethod =
                     ctx.Request.Headers.["X-Forwarded-Method"]
                     |> Seq.tryHead
-                    |> Option.defaultValue "POST" // Alapértelmezett érték, ha a header hiányzik
+                    |> Option.defaultValue "POST"
                     |> fun method -> method.ToUpper()
                 printfn "Original HTTP method from X-Forwarded-Method: %s" httpMethod
 
-                // Szabályok betöltése és szűrése az Endpoint és HttpType alapján
+                // Szabályok betöltése és szűrése
                 let rules =
                     Database.getRules ()
                     |> List.filter (fun rule ->
                         let endpointMatch =
                             rule.Endpoint
                             |> Option.map (fun endpoint -> forwardedUri.Contains endpoint)
-                            |> Option.defaultValue true // Ha nincs Endpoint megadva, akkor érvényes
+                            |> Option.defaultValue true
                         let httpTypeMatch =
                             rule.HttpType
                             |> Option.map (fun httpType -> httpType.ToString().ToUpper() = httpMethod)
-                            |> Option.defaultValue true // Ha nincs HttpType megadva, akkor érvényes
+                            |> Option.defaultValue true
                         endpointMatch && httpTypeMatch
                     )
-                printfn "Fetched %d rules after endpoint and HTTP type filtering for URI: %s, Method: %s" rules.Length forwardedUri httpMethod
+                printfn "Fetched %d rules for URI: %s, Method: %s" rules.Length forwardedUri httpMethod
 
-                // Szabályok kiértékelése a PolicyEngine segítségével
+                // Szabályok kiértékelése
                 let result = PolicyEngine.evaluateRules rules context
                 printfn "Evaluation result: Allowed=%b" result
 
-                // Státuszkód és válasz
+                // Válasz
                 if result then
                     ctx.SetStatusCode 200
                     return! json {| Allowed = true |} next ctx
@@ -124,5 +133,5 @@ let evaluateHandler : HttpHandler =
 let evaluateRoutes : HttpHandler =
     printfn "Evaluate routes initialized"
     choose [
-        POST >=> route "/api/evaluate" >=> evaluateHandler
+        POST >=> route "/api/gk/evaluate" >=> evaluateHandler
     ]

@@ -47,7 +47,7 @@ module Database =
             let createUsersTable = """
             CREATE TABLE IF NOT EXISTS Users (
                 Username     TEXT    PRIMARY KEY,
-                PasswordHash TEXT    NOT NULL
+                Password TEXT    NOT NULL
             );"""
             use cmdUsers = conn.CreateCommand()
             cmdUsers.CommandText <- createUsersTable
@@ -185,16 +185,16 @@ module Database =
             reraise()
 
     // Hozzáad egy új felhasználót a Users táblához
-    let addUser (username: string) (passwordHash: string) : unit =
+    let addUser (username: string) (password: string) : unit =
         use conn = new SqliteConnection(connectionString)
         conn.Open()
         let cmd = conn.CreateCommand()
         cmd.CommandText <- """
-            INSERT INTO Users (Username, PasswordHash)
-            VALUES ($username, $passwordHash);
+            INSERT INTO Users (Username, Password)
+            VALUES ($username, $password);
         """
         cmd.Parameters.AddWithValue("$username", username) |> ignore
-        cmd.Parameters.AddWithValue("$passwordHash", passwordHash) |> ignore
+        cmd.Parameters.AddWithValue("$password", password) |> ignore
         cmd.ExecuteNonQuery() |> ignore
 
     // Lekéri az összes felhasználónevet
@@ -211,16 +211,16 @@ module Database =
             reraise()
 
     // Töröl egy felhasználót, ha a felhasználónév és a jelszóhash egyezik
-    let deleteUser (username: string) (passwordHash: string) : bool =
+    let deleteUser (username: string) (password: string) : bool =
         try
             use conn = createConnection()
             let parameters = {|
                 Username = username
-                PasswordHash = passwordHash
+                Password = password
             |}
             let rowsAffected =
                 conn.Execute(
-                    "DELETE FROM Users WHERE Username = @Username AND PasswordHash = @PasswordHash",
+                    "DELETE FROM Users WHERE Username = @Username AND Password = @Password",
                     parameters
                 )
             printfn "Delete user %s, rows affected: %d" username rowsAffected
@@ -242,13 +242,13 @@ module Database =
         let count = cmd.ExecuteScalar() :?> int64
         count > 0
 
-    // Lekér egy felhasználót (Username és PasswordHash), ha létezik
+    // Lekér egy felhasználót (Username és Password), ha létezik
     let tryGetUser (username: string) : (string * string) option =
         use conn = new SqliteConnection(connectionString)
         conn.Open()
         let cmd = conn.CreateCommand()
         cmd.CommandText <- """
-            SELECT Username, PasswordHash FROM Users
+            SELECT Username, Password FROM Users
             WHERE Username = $username;
         """
         cmd.Parameters.AddWithValue("$username", username) |> ignore

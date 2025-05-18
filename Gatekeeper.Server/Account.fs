@@ -33,7 +33,7 @@ type DeleteUserDto = {
 let loginHandler : HttpHandler =
     fun next ctx ->
         task {
-            printfn "Login handler called for /api/account/login"
+            printfn "Login handler called for /api/gk/account/login"
             try
                 let! dto = ctx.BindJsonAsync<LoginDto>()
                 printfn "Deserialized DTO: Username=%s, Password=%s" dto.Username dto.Password
@@ -61,7 +61,7 @@ let loginHandler : HttpHandler =
 let registerHandler : HttpHandler =
     fun (next: HttpFunc) (ctx: HttpContext) ->
         task {
-            printfn "Register handler called for /api/account/register"
+            printfn "Register handler called for /api/gk/account/register"
             try
                 let! dto = ctx.BindJsonAsync<RegisterDto>()
                 printfn "Register attempt for username: %s" dto.Username
@@ -87,7 +87,7 @@ let registerHandler : HttpHandler =
 let deleteUserHandler : HttpHandler =
     fun (next: HttpFunc) (ctx: HttpContext) ->
         task {
-            printfn "Delete user handler called for /api/account/delete"
+            printfn "Delete user handler called for /api/gk/account/delete"
             try
                 let! dto = ctx.BindJsonAsync<DeleteUserDto>()
                 printfn "Delete attempt for username: %s" dto.Username
@@ -121,7 +121,7 @@ let deleteUserHandler : HttpHandler =
 let getAllUsernamesHandler : HttpHandler =
     fun (next: HttpFunc) (ctx: HttpContext) ->
         task {
-            printfn "Get all usernames handler called for /api/account/usernames"
+            printfn "Get all usernames handler called for /api/gk/account/usernames"
             try
                 let usernames = Gatekeeper.Database.getAllUsernames()
                 printfn "Fetched %d usernames" usernames.Length
@@ -137,8 +137,8 @@ let getAllUsernamesHandler : HttpHandler =
 let accountRoutes : HttpHandler =
     printfn "Account routes initialized"
     choose [
-        POST >=> route "/api/account/register" >=> registerHandler
-        POST >=> route "/api/account/login" >=> loginHandler
-        POST >=> route "/api/account/delete" >=> deleteUserHandler
-        GET >=> route "/api/account/usernames" >=> getAllUsernamesHandler
+        POST >=> route "/api/gk/account/register" >=> registerHandler
+        POST >=> route "/api/gk/account/login" >=> loginHandler
+        POST >=> route "/api/gk/account/delete" >=> deleteUserHandler
+        GET >=> route "/api/gk/account/usernames" >=> getAllUsernamesHandler
     ]

@@ -75,9 +75,9 @@ let main args =
         let adminPassword = Environment.GetEnvironmentVariable "ADMIN_PASSWORD"
         if String.IsNullOrWhiteSpace adminEmail || String.IsNullOrWhiteSpace adminPassword then
             printfn "No users in database and ADMIN_EMAIL or ADMIN_PASSWORD not set, creating default admin."
-            addUser "admin" (BCrypt.Net.BCrypt.HashPassword "admin")
+            addUser "admin" "admin"
         else
-            addUser adminEmail (BCrypt.Net.BCrypt.HashPassword adminPassword)
+            addUser adminEmail adminPassword
             printfn "No users in database, created admin user '%s'." adminEmail
     else
         printfn "Users already exist in database, skipping admin creation."

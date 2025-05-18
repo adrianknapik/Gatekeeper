@@ -116,12 +116,12 @@ module Routes =
     // Routing
     let webApp : HttpHandler =
         choose [
-            route "/" >=> text "Gatekeeper API"
-            route "/api/rules" >=> choose [
+            route "/gk/" >=> text "Gatekeeper API"
+            route "/api/gk/rules" >=> choose [
                 GET  >=> getRulesHandler
                 POST >=> createRuleHandler
             ]
-            PUT    >=> routef "/api/rules/%i" updateRuleHandler
-            DELETE >=> routef "/api/rules/%i" deleteRuleHandler
+            PUT    >=> routef "/api/gk/rules/%i" updateRuleHandler
+            DELETE >=> routef "/api/gk/rules/%i" deleteRuleHandler
             setStatusCode 404 >=> text "Not Found"
         ]
