@@ -1,0 +1,50 @@
+version: "3.5"
+
+services:
+  gatekeeper-be:
+    image: knapkomadmin/knapkom-gatekeeper-be:demo1.5
+    container_name: gatekeeper-be
+    environment:
+      - ADMIN_PASSWORD=0000admin
+      - ADMIN_EMAIL=admin@gatekeeper.org
+    restart: always
+    ports:
+      - "5113:5113"
+    networks:
+      - default
+
+  gatekeeper-fe:
+    image: knapkomadmin/knapkom-gatekeeper-fe:demo8
+    container_name: gatekeeper-fe
+    restart: always
+    ports:
+      - "6223:6223"
+    networks:
+      - default
+
+  publisher-api:
+    build:
+      context: ./go-publisher-demo
+      dockerfile: Dockerfile
+    container_name: publisher-api
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+
+  todo-api:
+    build:
+      context: ./TodoDemo
+      dockerfile: Dockerfile
+    container_name: todo-api
+    restart: always
+    ports:
+      - "5223:5000"
+    networks:
+      - default
+
+networks:
+  default:
+    name: docker_internal
+    external: true
