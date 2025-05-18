@@ -59,16 +59,16 @@ services:
 
   publisher-api:
     build:
-      context: ./go-publisher-demo
+      context: ./PublisherDemo
       dockerfile: Dockerfile
     container_name: publisher-api
     restart: always
     expose:
-      - "8080"
+      - "8081"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.publisher-api.rule=PathPrefix(`/api/publisher_demo`)"
-      - "traefik.http.services.publisher-api.loadbalancer.server.port=8080"
+      - "traefik.http.services.publisher-api.loadbalancer.server.port=8081"
       - "traefik.http.routers.publisher-api.entrypoints=web"
       - "traefik.http.routers.publisher-api.service=publisher-api"
     networks:
