@@ -61,6 +61,7 @@ services:
     build:
       context: ./PublisherDemo
       dockerfile: Dockerfile
+    platform: linux/amd64
     container_name: publisher-api
     restart: always
     expose:
@@ -78,6 +79,7 @@ services:
     build:
       context: ./TodoDemo
       dockerfile: Dockerfile
+    platform: linux/amd64
     container_name: todo-api
     restart: always
     expose:
