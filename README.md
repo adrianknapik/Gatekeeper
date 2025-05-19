@@ -1,7 +1,7 @@
 # Gatekeeper
-Gatekeeper is a rule-based policy engine that operates over a REST API, designed to allow or reject HTTP requests based on their context. Built as an MVP for a university course in 10 days, it is deployable in containerized environments (e.g., behind a Traefik reverse proxy) and provides a foundation for real-world enterprise use.
+Gatekeeper is a rule-based policy engine that operates over a REST API, designed to allow or reject HTTP requests based on their context. It is deployable in containerized environments (e.g., behind a Traefik reverse proxy) and provides a foundation for real-world enterprise use.
 ## 📌 Current Version (MVP)
-This is an MVP developed with a focus on simplicity and core functionality. The current version only supports JWT token validation for evaluating request contexts. Support for additional contexts (e.g., IP, country, timestamp) is planned for future iterations.
+This is an MVP developed with a focus on simplicity and core functionality. The current version only supports JWT token validation for evaluating request contexts. Support for additional contexts (e.g., Params, Query, Request body) is planned for future iterations.
 
 ## 🔧 Main Components
 ### 🧠 Gatekeeper.Server (Backend)
@@ -10,7 +10,7 @@ The core policy engine, implemented in F# using the Giraffe framework.
 - Purpose: Evaluates incoming HTTP requests based on predefined rules.
 - Decision Logic: Requests are allowed only if they match an existing rule; otherwise, a 403 Forbidden response is returned.
 - Storage: Rules are stored in an SQLite database and cached in memory for performance.
-- Configuration: Configurable via environment variables (e.g., admin credentials, JWT secret).
+- Configuration: Configurable via environment variables (e.g., admin credentials).
 
 ### 🖥 Gatekeeper.Client (Frontend)
 A simple admin dashboard built with HTML, JavaScript, and CSS for creating, editing, and deleting policy rules.
@@ -27,7 +27,7 @@ A simple admin dashboard built with HTML, JavaScript, and CSS for creating, edit
 
 ## 🚀 Getting Started
 1. Run with Docker Compose (Recommended)
-```docker-compose up --build```
+```docker-compose up```
 
 This command starts:
 
@@ -79,18 +79,18 @@ The project images are available on Docker Hub:
 ## 🛠 API Endpoints
 The Gatekeeper REST API provides the following endpoints:
 ```
-POST /api/rules: Create a new rule (JSON payload).{
-  "field": "role",
-  "operator": "==",
-  "value": "admin",
-  "action": "Allow"
+POST /api/gk/rules: Create a new rule (JSON payload).{
+  "Field": "role",
+  "Operator": "Equal",
+  "Value": "admin",
+  "ContextSource": "JWT"
 }
 ```
 ```
-GET /api/rules: List all rules.
+GET /api/gk/rules: List all rules.
 ```
 ```
-DELETE /api/rules/:id: Delete a rule by ID.
+DELETE /api/gk/rules/:id: Delete a rule by ID.
 ```
 ```
 POST /api/gk/evaluate: Evaluate a request context (requires a valid JWT token).{
@@ -107,15 +107,15 @@ Rules follow a field-operator-value structure and are evaluated based on JWT tok
 [
   {
     "field": "role",
-    "operator": "==",
+    "operator": "Equal",
     "value": "admin",
-    "action": "Allow"
+    "ContextSource": "JWT"
   },
   {
-    "field": "sub",
-    "operator": "!=",
-    "value": "blocked_user",
-    "action": "Deny"
+    "Field": "sub",
+    "Operator": "NotEqual",
+    "Value": "blocked_user",
+    "ContextSource": "JWT"
   }
 ]
 ```
@@ -131,21 +131,21 @@ Rules follow a field-operator-value structure and are evaluated based on JWT tok
 
 The MVP uses basic authentication for the admin dashboard (ADMIN_EMAIL/ADMIN_PASSWORD).
 JWT validation requires a secret key (JWT_SECRET) for token verification.
-Future enhancements include password hashing, audit logging, and OAuth support.
+Future enhancements include password hashing, audit logging.
 
 
 ## 🔜 Future Enhancements
 
-Support for additional request contexts (IP, country, timestamp, etc.)
-Unit and integration tests for the policy engine and API
-Enhanced security features (e.g., audit logging, OAuth)
-Improved rule management with advanced logical operators
-OpenAPI/Swagger documentation
+- Support for additional request contexts (IP, country, timestamp, etc.)
+- Unit and integration tests for the policy engine and API
+- Enhanced security features (e.g., audit logging, OAuth)
+- Improved rule management with advanced logical operators
+- OpenAPI/Swagger documentation
 
 
 ## 🤝 Contributing
 Contributions are welcome! Please submit issues or pull requests via the GitHub repository.
-Development Setup
+### Development Setup:
 
 Install dependencies:
 - .NET 8 SDK
