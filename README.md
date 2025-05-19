@@ -70,11 +70,11 @@ The project images are available on Docker Hub:
 
 ## 🖼 Screenshots
 - Login Screen
-[The admin dashboard login page, accessible with the configured ADMIN_EMAIL and ADMIN_PASSWORD.](http://knapkom.com/due/fsharp/images/gkLogin.png)
+![The admin dashboard login page, accessible with the configured ADMIN_EMAIL and ADMIN_PASSWORD.](http://knapkom.com/due/fsharp/images/gkLogin.png)
 - Rule Management
-[The rule creation and editing interface, where users define field-operator-value logic for JWT-based policies.](http://knapkom.com/due/fsharp/images/gkRules.png)
+![The rule creation and editing interface, where users define field-operator-value logic for JWT-based policies.](http://knapkom.com/due/fsharp/images/gkRules.png)
 - Testing Policies
-[A sample request evaluation in the demo environment, showing how Gatekeeper processes JWT-based rules.](http://knapkom.com/due/fsharp/images/gkTest.png)
+![A sample request evaluation in the demo environment, showing how Gatekeeper processes JWT-based rules.](http://knapkom.com/due/fsharp/images/gkTest.png)
 
 ## 🛠 API Endpoints
 The Gatekeeper REST API provides the following endpoints:
